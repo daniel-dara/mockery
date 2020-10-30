@@ -23,9 +23,12 @@ use Mockery\Generator\MockConfigurationBuilder;
 use Mockery\Adapter\Phpunit\MockeryTestCase;
 use Mockery\MockInterface;
 use Mockery\Exception\BadMethodCallException;
+use test\Mockery\RegExpCompatability;
 
 class ContainerTest extends MockeryTestCase
 {
+    use RegExpCompatability;
+
     public function testSimplestMockCreation()
     {
         $m = mock();
@@ -37,7 +40,7 @@ class ContainerTest extends MockeryTestCase
     {
         $m = mock();
         $m->shouldReceive('foo->bar');
-        $this->assertRegExp(
+        $this->assertMatchesRegEx(
             '/Mockery_(\d+)__demeter_([0-9a-f]+)_foo/',
             Mockery::getContainer()->getKeyOfDemeterMockFor('foo', get_class($m))
         );
@@ -455,7 +458,7 @@ class ContainerTest extends MockeryTestCase
     {
         $m = mock('MockeryTest_PartialNormalClass2[!foo]');
         $this->expectException(BadMethodCallException::class);
-        $this->expectExceptionMessageRegExp('/::bar\(\), but no expectations were specified/');
+        $this->expectExceptionMessageRegEx('/::bar\(\), but no expectations were specified/');
         $m->bar();
     }
 
@@ -801,7 +804,7 @@ class ContainerTest extends MockeryTestCase
             ->andThrow(new \Exception('instanceMock ' . rand(100, 999)));
 
         $this->expectException(\Exception::class);
-        $this->expectExceptionMessageRegExp('/^instanceMock \d{3}$/');
+        $this->expectExceptionMessageRegEx('/^instanceMock \d{3}$/');
         new MyNamespace\MyClass16();
     }
 
@@ -846,6 +849,10 @@ class ContainerTest extends MockeryTestCase
      */
     public function testCanOverrideExpectedParametersOfInternalPHPClassesToPreserveRefs()
     {
+        if (\PHP_MAJOR_VERSION > 7) {
+            $this->expectException('LogicException');
+        }
+
         Mockery::getConfiguration()->setInternalClassMethodParamMap(
             'DateTime',
             'modify',
@@ -875,6 +882,9 @@ class ContainerTest extends MockeryTestCase
         if (!class_exists('MongoCollection', false)) {
             $this->markTestSkipped('ext/mongo not installed');
         }
+        if (\PHP_MAJOR_VERSION > 7) {
+            $this->expectException('LogicException');
+        }
         Mockery::getConfiguration()->setInternalClassMethodParamMap(
             'MongoCollection',
             'insert',
@@ -899,6 +909,10 @@ class ContainerTest extends MockeryTestCase
 
     public function testCanCreateNonOverridenInstanceOfPreviouslyOverridenInternalClasses()
     {
+        if (\PHP_MAJOR_VERSION > 7) {
+            $this->expectException('LogicException');
+        }
+
         Mockery::getConfiguration()->setInternalClassMethodParamMap(
             'DateTime',
             'modify',
@@ -1720,18 +1734,16 @@ class MockeryTest_TestInheritedType
 {
 }
 
-if (PHP_VERSION_ID >= 50400) {
-    class MockeryTest_MockCallableTypeHint
+class MockeryTest_MockCallableTypeHint
+{
+    public function foo(callable $baz)
     {
-        public function foo(callable $baz)
-        {
-            $baz();
-        }
+        $baz();
+    }
 
-        public function bar(callable $callback = null)
-        {
-            $callback();
-        }
+    public function bar(callable $callback = null)
+    {
+        $callback();
     }
 }
 
